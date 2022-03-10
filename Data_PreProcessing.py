@@ -42,7 +42,8 @@ class Preprocessor:
         self.data = pd.concat([data1, data2, data3, data4], ignore_index=True) # 18년 19년 자료 합쳐주는 부분.
         
         # Feature_Selection = pd.read_csv('RFC_Feature_Selection/RFC_feature_selection_Binary_OVERSAMPLING_No_gender_No_age_ADASYN.csv', index_col = 0)
-        Feature_Selection = pd.read_csv('c:/Users/bm990/Desktop/백업/Python_Code/Obesity/2022-01-06/RFC_Feature_Selection/RFC_feature_selection_Binary_OverSampling.csv', index_col = 0)
+        # Feature_Selection = pd.read_csv('c:/Users/bm990/Desktop/백업/Python_Code/Obesity/2022-01-06/RFC_Feature_Selection/RFC_feature_selection_Binary_OverSampling.csv', index_col = 0)
+        Feature_Selection = pd.read_csv('c:/Users/bm990/Desktop/백업/Python_Code/Obesity/2022-01-06/0310_RFC_Feature_Selection/RFC_feature_selection_Binary_OverSampling_SMOTE.csv', index_col = 0)
         filtering = Feature_Selection[(Feature_Selection['gender'] == self.ii) & (Feature_Selection['age'] == str(self.age))]
         column_feature = ['HE_BMI'] + list(filtering.index[0:self.top_count])
         self.column_feature = column_feature
@@ -55,7 +56,7 @@ class Preprocessor:
         # 성별 지정, 나이 지정해서 for loop로 돌려야함.
         gender = self.data['sex']
         
-        data_copy = self.data[(self.data['age']>=self.age[0]) & (self.data['age']<self.age[1])].copy()
+        data_copy = self.data[(self.data['age']>=self.age[0]) & (self.data['age']<=self.age[1])].copy()
     
         sex = [self.ii]
         data_copy = data_copy.loc[gender.isin(sex)]
@@ -115,10 +116,10 @@ class Preprocessor:
         cnt_array = cnt_array.reshape(1,-1)
         cnt_array = cnt_array.tolist()
 
-        cnt0 = cnt_array[0].count(0)
-        cnt1 = cnt_array[0].count(1)
+        self.b_cnt0 = cnt_array[0].count(0)
+        self.b_cnt1 = cnt_array[0].count(1)
 
-        print(f'before augmentation : 0 : {cnt0}, 1 : {cnt1}')
+        print(f'before augmentation : 0 : {self.b_cnt0}, 1 : {self.b_cnt1}')
         
         self.Method = Method
         from collections import Counter
@@ -146,15 +147,15 @@ class Preprocessor:
         
         train_data_size = len(self.y_train)
         test_data_size = len(self.y_test)
-            
+        
         cnt_dict = dict(Counter(self.y_train))
         
-        cnt0 = cnt_dict[0]
-        cnt1 = cnt_dict[1]
-        print(f'after augmentation : 0 : {cnt0}, 1 : {cnt1}')
+        self.a_cnt0 = cnt_dict[0]
+        self.a_cnt1 = cnt_dict[1]
+        print(f'after augmentation : 0 : {self.a_cnt0}, 1 : {self.a_cnt1}')
         print(' ')
         
-        return (self.X_train, self.y_train), (self.X_test, self.y_test), (cnt0, cnt1)
+        return (self.X_train, self.y_train), (self.X_test, self.y_test), (self.b_cnt0, self.b_cnt1, self.a_cnt0, self.a_cnt1)
     
 import numpy as np
 import matplotlib.pyplot as plt
@@ -163,9 +164,10 @@ from sklearn.metrics import confusion_matrix, precision_recall_curve
 from sklearn.metrics import recall_score, precision_score, f1_score, auc, roc_curve, roc_auc_score
 from sklearn.model_selection import cross_val_predict
 
-class Classifier:
+class Classifier(Preprocessor):
     def __init__(self, top_count, ii, age, Method, train, test, column_feature):
-
+        # super(Classifier, self).__init__()
+        
         self.column_feature = column_feature
         self.Method = Method
         self.top_count = top_count
@@ -205,7 +207,6 @@ class Classifier:
             self.clf = SGDClassifier(max_iter=1000, random_state = 42)
             self.clf.fit(self.X_train, self.y_train)
             
-            
         elif model == 'GBM':
             from sklearn.ensemble import GradientBoostingClassifier
             from sklearn.model_selection import GridSearchCV
@@ -215,15 +216,73 @@ class Classifier:
                         'max_depth':[2,3,5,10,30,50,70,100]}
             grid_dtree = GridSearchCV(self.clf,param_grid=parameters,cv=3,refit=True)
             grid_dtree.fit(self.X_train, self.y_train)
+            best_param = list(grid_dtree.best_params_.values())
 
             print('GridSearchCV 최적 파라미터:', grid_dtree.best_params_)
             print('GridSearchCV 최고 정확도: {0:.4f}'.format(grid_dtree.best_score_))
 
-            best_param = list(grid_dtree.best_params_.values())
-
             self.clf = GradientBoostingClassifier(n_estimators= best_param[1] ,max_depth= best_param[0], random_state=42)
             self.clf.fit(self.X_train, self.y_train)
             
+        # elif model == 'GBM':
+        #     from sklearn.ensemble import GradientBoostingClassifier
+        #     from sklearn.model_selection import GridSearchCV
+            
+        #     self.clf = GradientBoostingClassifier(random_state=42)
+        #     parameters = {'n_estimators':[3,10,20,30,40,50,70,100],
+        #                 'max_depth':[2,3,5,10,30,50,70,100]}
+        #     grid_dtree = GridSearchCV(self.clf,param_grid=parameters,cv=3,refit=True)
+        #     grid_dtree.fit(self.X_train, self.y_train)
+        #     best_param = list(grid_dtree.best_params_.values())
+
+        #     print('GridSearchCV 최적 파라미터:', grid_dtree.best_params_)
+        #     print('GridSearchCV 최고 정확도: {0:.4f}'.format(grid_dtree.best_score_))
+
+        #     self.clf = GradientBoostingClassifier(n_estimators= best_param[1] ,max_depth= best_param[0], random_state=42)
+        #     self.clf.fit(self.X_train, self.y_train)
+            
+        
+        elif model == 'LGBM':
+            from lightgbm import LGBMClassifier
+            from sklearn.model_selection import GridSearchCV
+            
+            self.clf = LGBMClassifier(random_state=42, application='binary')
+            parameters = {'num_leaves':[3,10,20,30,40,50,70,100],
+                        'max_depth':[2,3,5,10,30,50,70,100]}
+            grid_dtree = GridSearchCV(self.clf,param_grid=parameters,cv=3,refit=True)
+            grid_dtree.fit(self.X_train, self.y_train)
+            best_param = list(grid_dtree.best_params_.values())
+            
+            print('GridSearchCV 최적 파라미터:', grid_dtree.best_params_)
+            print('GridSearchCV 최고 정확도: {0:.4f}'.format(grid_dtree.best_score_))
+            
+            self.clf = LGBMClassifier(num_leaves=best_param[1],
+                                      max_depth=best_param[0],
+                                      random_state=42, application='binary')
+            self.clf.fit(self.X_train, self.y_train)#, early_stopping_rounds=200)
+        
+            
+        elif model == 'XGB':
+            from xgboost import XGBClassifier
+            from sklearn.model_selection import GridSearchCV
+
+            self.clf = XGBClassifier(random_state=42, eval_metric='logloss', use_label_encoder=False)
+            parameters = {'n_estimators':[3,10,20,30,40,50,70,100],
+                        'max_depth':[2,3,5,10,30,50,70,100],
+                        'gamma' : [0,0.1,0.2]}
+            grid_dtree = GridSearchCV(self.clf,param_grid=parameters,cv=3,refit=True)
+            grid_dtree.fit(self.X_train, self.y_train)
+            best_param = list(grid_dtree.best_params_.values())
+
+            print('GridSearchCV 최적 파라미터:', grid_dtree.best_params_)
+            print('GridSearchCV 최고 정확도: {0:.4f}'.format(grid_dtree.best_score_))
+            print(best_param)
+            self.clf = XGBClassifier(n_estimators=best_param[2],
+                                     max_depth=best_param[1],
+                                     gamma=best_param[0],
+                                     random_state=42, eval_metric='logloss', use_label_encoder=False)
+            self.clf.fit(self.X_train, self.y_train)#, early_stopping_rounds=200)
+
             
         elif model == 'RFC':
             # from sklearn.ensemble import RandomForestClassifier
@@ -235,10 +294,10 @@ class Classifier:
                         'max_depth':[2,3,5,10,30,50,70,100]}
             grid_dtree = GridSearchCV(self.clf,param_grid=parameters,cv=3,refit=True)
             grid_dtree.fit(self.X_train, self.y_train)
-
+            best_param = list(grid_dtree.best_params_.values())
+            
             print('GridSearchCV 최적 파라미터:', grid_dtree.best_params_)
             print('GridSearchCV 최고 정확도: {0:.4f}'.format(grid_dtree.best_score_))
-            best_param = list(grid_dtree.best_params_.values())
             self.clf = ensemble.RandomForestClassifier(n_estimators= best_param[1] ,max_depth= best_param[0], random_state=42)
             self.clf.fit(self.X_train, self.y_train)
             
@@ -253,38 +312,115 @@ class Classifier:
             grid_dtree1 = GridSearchCV(self.clf,param_grid=parameters,cv=3,refit=True)
             grid_dtree1.fit(self.X_train, self.y_train)
             best_param1 = list(grid_dtree1.best_params_.values())
-            
+            print('best param : {best_param1}')
             self.clf = MLPClassifier(random_state=42, max_iter=1000, activation='relu',hidden_layer_sizes=[100, 100],alpha= best_param1[0])
-            self.clf.fit(self.X_train, self.y_train)    
+            self.clf.fit(self.X_train, self.y_train)
             
-  
+        elif model == 'SVC':
+            from sklearn.svm import SVC
+            from sklearn.model_selection import GridSearchCV
+            self.clf = SVC(kernel = 'rbf', probability=True, random_state=42) # 비선형 분류
+            ###################GRID SEARCH CV
+            parameters = {'gamma':[0.01, 0.1,0.5,1,5,10,30,50],
+                        'C':[0.01, 0.1,0.5,1,5,10,30,50]}
+            grid_dtree = GridSearchCV(self.clf,param_grid=parameters,cv=3,refit=True)
+            grid_dtree.fit(self.X_train, self.y_train)
+
+            print('GridSearchCV 최적 파라미터:', grid_dtree.best_params_)
+            print('GridSearchCV 최고 정확도: {0:.4f}'.format(grid_dtree.best_score_))
+
+            # fig = plt.figure(2*i)
+            results = pd.DataFrame(grid_dtree.cv_results_)
+            # scores = np.array(results.mean_test_score).reshape(8, 8)
+            # mg.tools.heatmap(scores, xlabel='gamma', xticklabels=parameters['gamma'],ylabel='C', yticklabels=parameters['C'], cmap="viridis")
+            best_param = list(grid_dtree.best_params_.values())
+            # plt.title(grid_dtree.best_params_.items())
+            # plt.savefig(PATH +"/top" + str(top_count) + ' ' + str(ii) + ' ' + str(age_list[age]) + ' ' + str(i+1) + "_" + 'Heatmap' + ".png", dpi=300)
+            # plt.close()
+            #plt.show()
+
+            self.clf = SVC(gamma= best_param[1] ,C= best_param[0], kernel = 'rbf', probability=True, random_state=42)
+            self.clf.fit(self.X_train, self.y_train)
+            
+        elif model == 'LR':
+            from sklearn.linear_model import LogisticRegression
+            self.clf = LogisticRegression(max_iter=1000, random_state = 42)
+            self.clf.fit(self.X_train, self.y_train)
+            
+        elif model == 'KNN':
+            from sklearn.neighbors import KNeighborsClassifier
+            from sklearn.model_selection import GridSearchCV
+            self.clf = KNeighborsClassifier(n_jobs=-1)
+            parameters = {'n_neighbors':[3,5]}
+            grid_dtree = GridSearchCV(self.clf,param_grid=parameters,cv=3,refit=True)
+            grid_dtree.fit(self.X_train, self.y_train)
+            print('GridSearchCV 최적 파라미터:', grid_dtree.best_params_)
+            print('GridSearchCV 최고 정확도: {0:.4f}'.format(grid_dtree.best_score_))
+
+            # fig = plt.figure(3*i)
+            # results = pd.DataFrame(grid_dtree.cv_results_)
+            # scores = np.array(results.mean_test_score).reshape(8, 8) #위의 parameter 갯수만큼 수정해줘야함ㅁ
+            # mg.tools.heatmap(scores, xlabel='n_estimators', xticklabels=parameters['n_estimators'],ylabel='max_depth', yticklabels=parameters['max_depth'], cmap="viridis")
+            best_param = list(grid_dtree.best_params_.values())
+            # plt.title(grid_dtree.best_params_.items())
+            # plt.savefig(PATH +'/top ' + str(top_count) + ' ' + str(ii) + ' ' + str(age_list[age]) + ' ' + str(i+1) + "_" + 'Heatmap' + ".png", dpi=300)
+            # plt.close()
+            #plt.show()
+
+            self.clf = KNeighborsClassifier(n_neighbors=best_param[0], n_jobs=-1)
+            self.clf.fit(self.X_train, self.y_train)
+            
     def model_eval(self):
         
         self.y_pred = self.clf.predict(self.X_test)
         self.r_score = recall_score(self.y_test, self.y_pred)
         self.p_score = precision_score(self.y_test, self.y_pred)
         self.f_score = f1_score(self.y_test, self.y_pred)
-        self.accuracy = self.clf.score(self.X_test, self.y_test)
+        self.accuracy = self.clf.score(self.X_test, self.y_test)  
+        from sklearn.model_selection import cross_val_score
+        self.cross_val_acc = cross_val_score(self.clf, self.X_train, self.y_train)
+        print(self.cross_val_acc)
         
-        if self.model in ['RFC', 'MLP', 'GBM']:
+        
+        # 'LGBM'
+        # # import Common_Module.CMStat as CO
+        # pred = self.clf.predict(self.X_test)
+        # pred_proba = self.clf.predict_proba(self.X_test)[:1]
+        # # CO.get_clf_eval(self.y_test, pred)
+        
+        # 'XGB'
+        # preds = self.clf.predict(self.X_test)
+        # preds_proba = self.clf.predict_proba(self.X_test)[:, 1]
+        # print(preds_proba[:10])
+        
+        
+        if self.model in ['RFC', 'MLP', 'GBM', 'SVC', 'LR', 'KNN', 'LGBM', 'XGB']:
+            from sklearn.metrics import average_precision_score
             self.precision, self.recall, _ = precision_recall_curve(self.y_test, self.clf.predict_proba(self.X_test)[:, 1])
             self.fpr, self.tpr, _ = roc_curve(self.y_test,self.clf.predict_proba(self.X_test)[:, 1])
-        
-        elif self.model == 'SGD':
+            self.clf_auc = roc_auc_score(self.y_test, self.clf.predict_proba(self.X_test)[:, 1])
+            self.clf_pr_auc = average_precision_score(self.y_test, self.clf.predict_proba(self.X_test)[:, 1])
             
+        elif self.model == 'SGD':
+            from sklearn.metrics import average_precision_score
             self.precision, self.recall, _ = precision_recall_curve(self.y_test, self.clf.decision_function(self.X_test))
             self.fpr, self.tpr, _ = roc_curve(self.y_test,self.clf.decision_function(self.X_test))
-        
+            self.clf_auc = roc_auc_score(self.y_test, self.clf.decision_function(self.X_test))
+            self.clf_pr_auc = average_precision_score(self.y_test, self.clf.decision_function(self.X_test))
+                
+                
         self.TP = self.perf_measure(np.array(self.y_test), self.y_pred)[0]
         self.FP = self.perf_measure(np.array(self.y_test), self.y_pred)[1]
         self.TN = self.perf_measure(np.array(self.y_test), self.y_pred)[2]
         self.FN = self.perf_measure(np.array(self.y_test), self.y_pred)[3]
         
-        return (self.TP, self.FP, self.TN, self.FN), (self.accuracy, self.r_score, self.p_score, self.f_score), (self.fpr, self.tpr, self.recall, self.precision)
+        return (self.TP, self.FP, self.TN, self.FN),(self.accuracy, self.r_score, self.p_score, self.f_score),(self.fpr, self.tpr, self.recall, self.precision, self.clf_auc, self.clf_pr_auc)
         
     def save_eval(self, day, cnt):
-        cnt0 = cnt[0]
-        cnt1 = cnt[1]
+        self.b_cnt0 = cnt[0]
+        self.b_cnt1 = cnt[1]
+        self.a_cnt0 = cnt[2]
+        self.a_cnt1 = cnt[3]
         
         self.sup = "_" + str(self.Method)
         self.PATH = "2022-01-06/" + day + "/Binary_" + str(self.model) + "_Result" + self.sup
@@ -295,13 +431,14 @@ class Classifier:
         os.makedirs(self.PATH2,exist_ok=True)
 
         print_list = []
-
-        # print_list.append([])
         print_list.append(str(self.ii))
         print_list.append(str(self.age))
         print_list.append(str(self.column_feature))
-        print_list.append(str(cnt0))
-        print_list.append(str(cnt1))
+        
+        print_list.append(str(self.b_cnt0))
+        print_list.append(str(self.b_cnt1))
+        print_list.append(str(self.a_cnt0))
+        print_list.append(str(self.a_cnt1))
         
         print_list.append(str(len(self.y_train))) # train_data_size
         print_list.append(str(len(self.y_test))) # test_data_size
@@ -310,14 +447,16 @@ class Classifier:
         print_list.append(self.FP)
         print_list.append(self.TN)
         print_list.append(self.FN)
+        
+        print_list.append(self.cross_val_acc)
         print_list.append(np.round(self.accuracy,3))
         print_list.append(np.round(self.r_score,3))
         specificity = self.TN / (self.TN+self.FP)
-        print(self.TP / (self.TP + self.FN))
-        print(self.r_score)
         print_list.append(np.round(specificity,3))
         print_list.append(np.round(self.p_score,3))
         print_list.append(np.round(self.f_score,3))
+        print_list.append(np.round(self.clf_auc,3))
+        print_list.append(np.round(self.clf_pr_auc,3))
         
         ## ROC CURVE
         plt.figure()
@@ -327,7 +466,7 @@ class Classifier:
         plt.legend(loc = 4)
         plt.fill_between(self.fpr, self.tpr, alpha=0.5)
         
-        if self.model in ['RFC', 'MLP', 'GBM']:
+        if self.model in ['RFC', 'MLP', 'GBM', 'SVC', 'LR', 'KNN', 'XGB', 'LGBM']:
             clf_auc = roc_auc_score(self.y_test, self.clf.predict_proba(self.X_test)[:, 1])
         elif self.model == 'SGD':
             clf_auc = roc_auc_score(self.y_test, self.clf.decision_function(self.X_test))
@@ -400,8 +539,10 @@ class Classifier:
         plt.legend(['Male 19-39','Male 39-59','Male 59-79','Female 19-39','Female 39-59','Female 59-79'],
                 fontsize=15, loc="lower right", ncol=2)
         plt.yticks(fontsize=20)
+        plt.ylim([0.37, 0.83])
         plt.ylabel('Accuracy', fontsize=25)
         plt.xlabel('Top Feature', fontsize=25)
+        plt.title(str(self.model), fontsize=20)
         ax.set_xticklabels(['1','2','3','4','5','6','7','8','9','10'], fontsize=20)
         plt.tight_layout()
         plt.savefig(self.PATH +"/ " + self.model + '_Accuracy per feature number' + '.png')
@@ -433,7 +574,7 @@ class Classifier:
         plt.fill_between(fpr_list[1],tpr_list[1], alpha=0.3, color=roc_color[6])
         plt.fill_between(fpr_list[2],tpr_list[2], alpha=0.3, color=roc_color[9])
         plt.legend(['Male 19-39','Male 39-59','Male 59-79'],
-                fontsize=15, loc="lower right")
+                fontsize=20, loc="lower right")
         plt.xlim([0, 1])
         plt.xticks(fontsize=20)
         plt.yticks(fontsize=20)
@@ -448,7 +589,7 @@ class Classifier:
         plt.fill_between(fpr_list[4],tpr_list[4], alpha=0.3, color=roc_color[6])
         plt.fill_between(fpr_list[5],tpr_list[5], alpha=0.3, color=roc_color[9])
         plt.legend(['Female 19-39','Female 39-59','Female 59-79'],
-                fontsize=15, loc="lower right")
+                fontsize=20, loc="lower right")
         plt.xlim([0, 1])
         plt.xticks(fontsize=20)
         plt.yticks(fontsize=20)
@@ -467,7 +608,7 @@ class Classifier:
         plt.yticks(fontsize=20)
         plt.ylim([0, 1])
         plt.legend(['Male 19-39','Male 39-59','Male 59-79'],
-                fontsize=15, loc="lower right")
+                fontsize=20, loc="lower right")
 
 
         fig.add_subplot(2,2,4)
@@ -478,7 +619,7 @@ class Classifier:
         plt.fill_between(re_list[4], pr_list[4], alpha=0.3, color=pr_color[6])
         plt.fill_between(re_list[5], pr_list[5], alpha=0.3, color=pr_color[9])
         plt.legend(['Female 19-39','Female 39-59','Female 59-79'],
-                fontsize=15, loc="lower right")
+                fontsize=20, loc="lower right")
         plt.xlim([0, 1])
         plt.xticks(fontsize=20)
         plt.yticks(fontsize=20)

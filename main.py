@@ -4,8 +4,8 @@ import time
 import datetime
 
 OS_Method = "SMOTE"
-CF_Method = "RFC"
-day = '0224_test'
+CF_Method = "GBM" #LGBM, XGB, RFC, , LR, KNN / SVC, MLP, 
+day = '0310_OVERSAMPLING_SMOTE_RESULT'
 start = time.time()
 pl_acc = []
 ct = 0
@@ -17,7 +17,7 @@ for top_count in [1,2,3,4,5,6,7,8,9,10]:
     auc_list, pr_auc_list = [],[]
     pl_acc.append([])
     for ii in [1,2]: #gender
-        for age in [[19, 39], [39, 59], [59, 79]]:
+        for age in [[19, 39], [40, 59], [60, 79]]:
             
             ## Preprocessing
             Preprocessor_ = Preprocessor(top_count, ii, age)
@@ -64,6 +64,7 @@ for top_count in [1,2,3,4,5,6,7,8,9,10]:
                                 'f1 score',
                                 'AUROC',
                                 'AUPRC'])
+    Classifier_.ROCPR_save_sub(fpr_list, tpr_list, re_list, pr_list)
     
     pl.to_csv('c:/Users/bm990/Desktop/백업/Python_Code/Obesity/2022-01-06/' +
         day + '/Binary_' + CF_Method + '_Result_' + OS_Method +
@@ -74,7 +75,7 @@ for top_count in [1,2,3,4,5,6,7,8,9,10]:
 # print(pl_acc)
 # print(len(pl_acc))
 Classifier_.NFeatureAcc(accuracy=pl_acc)
-Classifier_.ROCPR_save_sub(fpr_list, tpr_list, re_list, pr_list)
+
 
 sec = time.time()-start
 times = str(datetime.timedelta(seconds=sec)).split(".")
