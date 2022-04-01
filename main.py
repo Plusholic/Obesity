@@ -3,15 +3,15 @@ from Data_PreProcessing import Preprocessor, Classifier
 import time
 import datetime
 
-OS_Method = "SMOTE"
-CF_Method = 'RFC'#[MLP, LR, GBM, KNN, MLP, '', XGB, 'LGBM', '', '']#'K',"", 'SVC'] MLP', 
-day = '0311_OVERSAMPLING_SMOTE_RESULT'
+OS_Method = 'None'
+CF_Method = 'SVC'#[LGBM, RFC, 'LGBM',RFC,GBM '', MLP]#,"KNN",LR ''] ', 
+day = '0331_Notoversampling_SMOTE_RESULT_'
 start = time.time()                       
 pl_acc = []
 ct = 0
 # Preprocessor_ = Preprocessor(top_count = None, ii = None, age = None)
 
-for top_count in [1,2,3,4,5,6,7,8,9,10]:
+for top_count in [8]:
     pl = []
     pr_list,re_list = [],[]
     fpr_list,tpr_list = [],[]
@@ -66,7 +66,7 @@ for top_count in [1,2,3,4,5,6,7,8,9,10]:
                                 'AUROC',
                                 'AUPRC'])
     label = [True, False]
-    Classifier_.ROCPR_save_sub(fpr_list, tpr_list, re_list, pr_list, label[1])
+    Classifier_.ROCPR_save_sub(fpr_list, tpr_list, re_list, pr_list, label[0])
     
     pl.to_csv('c:/Users/bm990/Desktop/백업/Python_Code/Obesity/2022-01-06/' +
         day + '/Binary_' + CF_Method + '_Result_' + OS_Method +
@@ -76,7 +76,7 @@ for top_count in [1,2,3,4,5,6,7,8,9,10]:
 
 # print(pl_acc)
 # print(len(pl_acc))
-Classifier_.NFeatureAcc(accuracy=pl_acc)
+Classifier_.NFeatureAcc(accuracy=pl_acc, Label=label[1])
 
 
 sec = time.time()-start
