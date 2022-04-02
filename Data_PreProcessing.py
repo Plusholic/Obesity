@@ -44,6 +44,7 @@ class Preprocessor:
         # Feature_Selection = pd.read_csv('RFC_Feature_Selection/RFC_feature_selection_Binary_OVERSAMPLING_No_gender_No_age_ADASYN.csv', index_col = 0)
         # Feature_Selection = pd.read_csv('c:/Users/bm990/Desktop/백업/Python_Code/Obesity/2022-01-06/RFC_Feature_Selection/RFC_feature_selection_Binary_OverSampling.csv', index_col = 0)
         Feature_Selection = pd.read_csv('c:/Users/bm990/Desktop/백업/Python_Code/Obesity/2022-01-06/0310_RFC_Feature_Selection/RFC_feature_selection_Binary_OverSampling_SMOTE.csv', index_col = 0)
+        # Feature_Selection = pd.read_csv('c:/Users/bm990/Desktop/백업/Python_Code/Obesity/2022-01-06/0310_RFC_Feature_Selection/RFC_feature_selection_Binary_OverSampling_ADASYN.csv', index_col = 0)
         filtering = Feature_Selection[(Feature_Selection['gender'] == self.ii) & (Feature_Selection['age'] == str(self.age))]
         column_feature = ['HE_BMI'] + list(filtering.index[0:self.top_count])
         self.column_feature = column_feature
@@ -110,7 +111,7 @@ class Preprocessor:
 
         return tree_data
     
-    def OverSampler(self, Method=None):
+    def OverSampler(self, Method='None'):
         
         cnt_array = np.array(self.y_train)
         cnt_array = cnt_array.reshape(1,-1)
@@ -123,16 +124,34 @@ class Preprocessor:
         
         self.Method = Method
         from collections import Counter
-        if Method == None:
-            from imblearn.over_sampling import RandomOverSampler
-            OS = RandomOverSampler(random_state=42)
-            self.X_train, self.y_train = OS.fit_resample(self.X_train, self.y_train)
+        if Method == 'None':
+        #     # from imblearn.over_sampling import RandomOverSampler
+        #     # OS = RandomOverSampler(random_state=42)
+        #     # self.X_train, self.y_train = OS.fit_resample(self.X_train, self.y_train)
+            train_data_size = len(self.y_train)
+            test_data_size = len(self.y_test)
+            
+            
+            self.a_cnt0 = self.b_cnt0
+            self.a_cnt1 = self.b_cnt1
+            print(f'after augmentation : 0 : {self.a_cnt0}, 1 : {self.a_cnt1}')
+            print(' ')
             
         elif Method == "SMOTE":
             from imblearn.over_sampling import SMOTE
             OS = SMOTE(random_state=42)#, ratio = 1.0)
             self.X_train, self.y_train = OS.fit_resample(self.X_train, self.y_train)
+            # print(self.X_train)
+
+            train_data_size = len(self.y_train)
+            test_data_size = len(self.y_test)
             
+            cnt_dict = dict(Counter(self.y_train))
+            
+            self.a_cnt0 = cnt_dict[0]
+            self.a_cnt1 = cnt_dict[1]
+            print(f'after augmentation : 0 : {self.a_cnt0}, 1 : {self.a_cnt1}')
+            print(' ')
         elif Method == "ADASYN":
             from imblearn.over_sampling import ADASYN
             cnt_1, cnt_0 = 0, 0
@@ -145,17 +164,17 @@ class Preprocessor:
                 OS = ADASYN(sampling_strategy='minority', random_state=42)
                 self.X_train, self.y_train = OS.fit_resample(self.X_train, self.y_train)
         
-        train_data_size = len(self.y_train)
-        test_data_size = len(self.y_test)
+            train_data_size = len(self.y_train)
+            test_data_size = len(self.y_test)
+            
+            cnt_dict = dict(Counter(self.y_train))
+            
+            self.a_cnt0 = cnt_dict[0]
+            self.a_cnt1 = cnt_dict[1]
+            print(f'after augmentation : 0 : {self.a_cnt0}, 1 : {self.a_cnt1}')
+            print(' ')
         
-        cnt_dict = dict(Counter(self.y_train))
-        
-        self.a_cnt0 = cnt_dict[0]
-        self.a_cnt1 = cnt_dict[1]
-        print(f'after augmentation : 0 : {self.a_cnt0}, 1 : {self.a_cnt1}')
-        print(' ')
-        
-        return (self.X_train, self.y_train), (self.X_test, self.y_test), (self.b_cnt0, self.b_cnt1, self.a_cnt0, self.a_cnt1)
+        return (self.X_train, self.y_train.ravel()), (self.X_test, self.y_test), (self.b_cnt0, self.b_cnt1, self.a_cnt0, self.a_cnt1)
     
 import numpy as np
 import matplotlib.pyplot as plt
@@ -276,7 +295,7 @@ class Classifier(Preprocessor):
 
             print('GridSearchCV 최적 파라미터:', grid_dtree.best_params_)
             print('GridSearchCV 최고 정확도: {0:.4f}'.format(grid_dtree.best_score_))
-            print(best_param)
+            # print(best_param)
             self.clf = XGBClassifier(n_estimators=best_param[2],
                                      max_depth=best_param[1],
                                      gamma=best_param[0],
@@ -309,13 +328,14 @@ class Classifier(Preprocessor):
             # clf1.fit(X_train,y_train)
             
             parameters = {'alpha':[0.0001, 0.001, 0.01, 0.1]}
-            grid_dtree1 = GridSearchCV(self.clf,param_grid=parameters,cv=3,refit=True)
-            grid_dtree1.fit(self.X_train, self.y_train)
-            best_param1 = list(grid_dtree1.best_params_.values())
-            print('best param : {best_param1}')
-            self.clf = MLPClassifier(random_state=42, max_iter=1000, activation='relu',hidden_layer_sizes=[100, 100],alpha= best_param1[0])
+            grid_dtree = GridSearchCV(self.clf,param_grid=parameters,cv=3,refit=True)
+            grid_dtree.fit(self.X_train, self.y_train)
+            best_param = list(grid_dtree.best_params_.values())
+            print(best_param)
+            # print('best param : {grid_dtree1.best_params_}')
+            self.clf = MLPClassifier(random_state=42, max_iter=1000, activation='relu',hidden_layer_sizes=[100, 100],alpha= best_param[0])
             self.clf.fit(self.X_train, self.y_train)
-            
+            best_param_list = []
         elif model == 'SVC':
             from sklearn.svm import SVC
             from sklearn.model_selection import GridSearchCV
@@ -362,6 +382,7 @@ class Classifier(Preprocessor):
             # scores = np.array(results.mean_test_score).reshape(8, 8) #위의 parameter 갯수만큼 수정해줘야함ㅁ
             # mg.tools.heatmap(scores, xlabel='n_estimators', xticklabels=parameters['n_estimators'],ylabel='max_depth', yticklabels=parameters['max_depth'], cmap="viridis")
             best_param = list(grid_dtree.best_params_.values())
+            # print(self.best_param)
             # plt.title(grid_dtree.best_params_.items())
             # plt.savefig(PATH +'/top ' + str(top_count) + ' ' + str(ii) + ' ' + str(age_list[age]) + ' ' + str(i+1) + "_" + 'Heatmap' + ".png", dpi=300)
             # plt.close()
@@ -472,26 +493,32 @@ class Classifier(Preprocessor):
             clf_auc = roc_auc_score(self.y_test, self.clf.decision_function(self.X_test))
         
         plt.text(0.65,0.2,"AUC score: {:.3f}".format(clf_auc))
-        plt.title('top ' + str(self.top_count) + ' ' + str(self.ii) + ' ' + str(self.age) + ' ' + self.model)
         
-        plt.savefig(self.PATH +'/top ' + str(self.top_count)
-                    + ' ' + str(self.age)
-                    + ' ' + str(self.ii) +  ' ' + self.model + self.sup + '.png')
-        plt.savefig(self.PATH2 +'/top ' + str(self.top_count)
-                    + ' ' + str(self.age)
-                    + ' ' + str(self.ii) +  ' ' + self.model + self.sup + '.pdf')
+        if self.model == 'RFC':
+            plt.title('top ' + str(self.top_count) + ' ' + str(self.ii) + ' ' + str(self.age) + ' ' + 'RF')
+        elif self.model == 'SVC':
+            plt.title('top ' + str(self.top_count) + ' ' + str(self.ii) + ' ' + str(self.age) + ' ' + 'SVM')
+        else:
+            plt.title('top ' + str(self.top_count) + ' ' + str(self.ii) + ' ' + str(self.age) + ' ' + self.model)
+        
+        # plt.savefig(self.PATH +'/top ' + str(self.top_count)
+        #             + ' ' + str(self.age)
+        #             + ' ' + str(self.ii) +  ' ' + self.model + self.sup + '.png')
+        # plt.savefig(self.PATH2 +'/top ' + str(self.top_count)
+        #             + ' ' + str(self.age)
+        #             + ' ' + str(self.ii) +  ' ' + self.model + self.sup + '.pdf')
         plt.close()
         
         # ## Confusion Matrix
         y_train_pred = cross_val_predict(self.clf, self.X_train, self.y_train)
         conf_mx = confusion_matrix(self.y_train, y_train_pred)
         plt.matshow(conf_mx, cmap=plt.cm.gray)
-        plt.savefig(self.PATH +"/Top " + str(self.top_count)
-                    + " " + str(self.age)
-                    + " " + str(self.ii) +  ' ' + self.model + '_confusion-matrix' + self.sup + '.png')
-        plt.savefig(self.PATH2 +"/Top " + str(self.top_count)
-                    + " " + str(self.age)
-                    + " " + str(self.ii) +  ' ' + self.model + '_confusion-matrix' + self.sup + '.pdf')
+        # plt.savefig(self.PATH +"/Top " + str(self.top_count)
+        #             + " " + str(self.age)
+        #             + " " + str(self.ii) +  ' ' + self.model + '_confusion-matrix' + self.sup + '.png')
+        # plt.savefig(self.PATH2 +"/Top " + str(self.top_count)
+        #             + " " + str(self.age)
+        #             + " " + str(self.ii) +  ' ' + self.model + '_confusion-matrix' + self.sup + '.pdf')
         
         # Precision - Recall Curve
         plt.figure()
@@ -501,16 +528,16 @@ class Classifier(Preprocessor):
         plt.ylabel('Precision')
         plt.ylim([0, 1])
         plt.xlim([0, 1])
-        plt.savefig(self.PATH +"/Top " + str(self.top_count)
-                    + " " + str(self.age)
-                    + " " + str(self.ii) +  ' ' + self.model + '_Precision-recall Curve' + self.sup + '.png')
-        plt.savefig(self.PATH2 +"/Top " + str(self.top_count)
-                    + " " + str(self.age)
-                    + " " + str(self.ii) +  ' ' + self.model + '_Precision-recall Curve' + self.sup + '.pdf')        
+        # plt.savefig(self.PATH +"/Top " + str(self.top_count)
+        #             + " " + str(self.age)
+        #             + " " + str(self.ii) +  ' ' + self.model + '_Precision-recall Curve' + self.sup + '.png')
+        # plt.savefig(self.PATH2 +"/Top " + str(self.top_count)
+        #             + " " + str(self.age)
+        #             + " " + str(self.ii) +  ' ' + self.model + '_Precision-recall Curve' + self.sup + '.pdf')        
             
         return print_list
     
-    def NFeatureAcc(self, accuracy=accuracy):
+    def NFeatureAcc(self, accuracy=accuracy, Label=True):
         acc1939_1_list = []
         acc3959_1_list = []
         acc5979_1_list = []
@@ -536,26 +563,114 @@ class Classifier(Preprocessor):
         plt.plot(acc3959_2_list, '--o', label = 'women3959', linewidth=3, color='dodgerblue')
         plt.plot(acc5979_2_list, '--o', label = 'women5979', linewidth=3, color='slateblue')
         plt.xticks([0,1,2,3,4,5,6,7,8,9])
-        plt.legend(['Male 19-39','Male 39-59','Male 59-79','Female 19-39','Female 39-59','Female 59-79'],
-                fontsize=15, loc="lower right", ncol=2)
+        if Label == True:
+            plt.legend(['Male 19-39','Male 40-59','Male 60-79','Female 19-39','Female 40-59','Female 60-79'],
+                    fontsize=15, loc="lower right", ncol=2)
         plt.yticks(fontsize=20)
         plt.ylim([0.37, 0.83])
         plt.ylabel('Accuracy', fontsize=25)
         plt.xlabel('Top Feature', fontsize=25)
-        plt.title(str(self.model), fontsize=20)
+        
+        if self.model == 'RFC':
+            plt.title('RF', fontsize=20)
+        elif self.model == 'SVC':
+            plt.title('SVM', fontsize=20)
+        else:
+            plt.title(str(self.model), fontsize=20)
+        
         ax.set_xticklabels(['1','2','3','4','5','6','7','8','9','10'], fontsize=20)
         plt.tight_layout()
-        plt.savefig(self.PATH +"/ " + self.model + '_Accuracy per feature number' + '.png')
-        plt.savefig(self.PATH2 +"/ " + self.model + '_Accuracy per feature number' + '.pdf')
+        
+        if self.model == 'RFC':
+            plt.savefig(self.PATH +"/ " + 'RF' + '_Accuracy per feature number' + '.png')
+            plt.savefig(self.PATH2 +"/ " + 'RF' + '_Accuracy per feature number' + '.pdf')
+        else: 
+            plt.savefig(self.PATH +"/ " + self.model + '_Accuracy per feature number' + '.png')
+            plt.savefig(self.PATH2 +"/ " + self.model + '_Accuracy per feature number' + '.pdf')
         
 
 
-    def ROCPR_save_sub(self, fpr_list, tpr_list, re_list, pr_list):
+    def ROCPR_save_sub(self, fpr_list, tpr_list, re_list, pr_list, Label=True):
         from matplotlib import cm
         roc_color = cm.OrRd(np.linspace(0,1,10))
         pr_color = cm.PuBu(np.linspace(0,1,10))
+        
         plt.figure()
-        fig, big_axes = plt.subplots(2,1, figsize=(16,16))
+        fig, big_axes = plt.subplots(2,1, figsize=(16,8))
+        for row, big_ax in enumerate(big_axes, start=1):
+            # big_ax.set_title("Subplot row %s \n" % row, fontsize=16)
+
+            # Turn off axis lines and ticks of the big subplot 
+            # obs alpha is 0 in RGBA string!
+            big_ax.tick_params(labelcolor=(1.,1.,1., 0.0), top='off', bottom='off', left='off', right='off')
+            # removes the white frame
+            big_ax._frameon = False
+            
+
+        fig.add_subplot(1,2,1)
+    
+        plt.plot(fpr_list[0],tpr_list[0], linewidth=3, color='darkgreen')
+        plt.plot(fpr_list[1],tpr_list[1], linewidth=3, color=pr_color[6], linestyle = 'dashed')
+        plt.plot(fpr_list[2],tpr_list[2], linewidth=3, color='darkslategray', linestyle = 'dotted')
+        
+        # plt.plot(fpr_list[0],tpr_list[0], linewidth=3, color='darkorange')
+        # plt.plot(fpr_list[1],tpr_list[1], linewidth=3, color='brown', linestyle = 'dashed')
+        # plt.plot(fpr_list[2],tpr_list[2], linewidth=3, color='deeppink', linestyle = 'dotted')
+        plt.plot([0,1], [0,1], linewidth=3, color='k', linestyle='dashdot')
+        # plt.fill_between(fpr_list[0],tpr_list[0], alpha=0.3, color=roc_color[4])
+        # plt.fill_between(fpr_list[1],tpr_list[1], alpha=0.3, color=roc_color[6])
+        # plt.fill_between(fpr_list[2],tpr_list[2], alpha=0.3, color=roc_color[9])
+        if Label == True:
+            plt.legend(['Male 19-39','Male 40-59','Male 60-79'],
+                    fontsize=25, loc="lower right")
+        plt.xlim([0, 1])
+        plt.xticks(fontsize=25)
+        plt.yticks(fontsize=25)
+        plt.ylim([0, 1])
+
+        fig.add_subplot(1,2,2)
+        plt.plot(fpr_list[3],tpr_list[3], linewidth=3, color='darkorange')
+        plt.plot(fpr_list[4],tpr_list[4], linewidth=3, color='brown', linestyle = 'dashed')
+        plt.plot(fpr_list[5],tpr_list[5], linewidth=3, color='deeppink', linestyle = 'dotted')
+        plt.plot([0,1], [0,1], linewidth=3, color='k', linestyle='dashdot')
+        # plt.fill_between(fpr_list[3],tpr_list[3], alpha=0.3, color=roc_color[4])
+        # plt.fill_between(fpr_list[4],tpr_list[4], alpha=0.3, color=roc_color[6])
+        # plt.fill_between(fpr_list[5],tpr_list[5], alpha=0.3, color=roc_color[9])
+        if Label == True:
+            plt.legend(['Female 19-39','Female 40-59','Female 60-79'],
+                    fontsize=25, loc="lower right")
+        plt.xlim([0, 1])
+        plt.xticks(fontsize=25)
+        plt.yticks(fontsize=25)
+        plt.ylim([0, 1])
+
+        if self.model == 'RFC':
+            fig.suptitle('RF' + ' Roc Curve', fontsize=25)
+        elif self.model == 'SVC':
+            fig.suptitle('SVM' + ' Roc Curve', fontsize=25)
+        else:
+            fig.suptitle(self.model + ' Roc Curve', fontsize=25)
+
+        # big_axes[0].text(0.43, 1.05, self.model + ' Roc Curve', fontsize=25)
+        # big_axes[1].text(0.37, 1.05, self.model + ' Precision-Recall Curve', fontsize=25)
+
+        plt.tight_layout()
+        
+        if self.model == 'RFC':
+        
+            plt.savefig(self.PATH + "/Top " + str(self.top_count) + " " +
+                        'RF' + '_ROC Curve' + '.png')
+            plt.savefig(self.PATH2 +"/Top " + str(self.top_count) + " " +
+                        'RF' + '_ROC Curve' + '.pdf')
+            
+        else:
+            plt.savefig(self.PATH + "/Top " + str(self.top_count) + " " +
+                        self.model + '_ROC Curve' + '.png')
+            plt.savefig(self.PATH2 +"/Top " + str(self.top_count) + " " +
+                        self.model + '_ROC Curve' + '.pdf')
+        
+        plt.figure()
+        fig, big_axes = plt.subplots(1,2, figsize=(16,8))
         for row, big_ax in enumerate(big_axes, start=1):
         #     big_ax.set_title("Subplot row %s \n" % row, fontsize=16)
 
@@ -563,73 +678,46 @@ class Classifier(Preprocessor):
             # obs alpha is 0 in RGBA string!
             big_ax.tick_params(labelcolor=(1.,1.,1., 0.0), top='off', bottom='off', left='off', right='off')
             # removes the white frame
-            big_ax._frameon = False
-
-        fig.add_subplot(2,2,1)
-        plt.plot(fpr_list[0],tpr_list[0], linewidth=2, color=roc_color[4])
-        plt.plot(fpr_list[1],tpr_list[1], linewidth=2, color=roc_color[6])
-        plt.plot(fpr_list[2],tpr_list[2], linewidth=2, color=roc_color[9])
-
-        plt.fill_between(fpr_list[0],tpr_list[0], alpha=0.3, color=roc_color[4])
-        plt.fill_between(fpr_list[1],tpr_list[1], alpha=0.3, color=roc_color[6])
-        plt.fill_between(fpr_list[2],tpr_list[2], alpha=0.3, color=roc_color[9])
-        plt.legend(['Male 19-39','Male 39-59','Male 59-79'],
-                fontsize=20, loc="lower right")
+            big_ax._frameon = False 
+                   
+        fig.add_subplot(1,2,1)
+        
+        plt.plot(re_list[0], pr_list[0], linewidth=3, color='darkgreen')
+        plt.plot(re_list[1], pr_list[1], linewidth=3, color=pr_color[6], linestyle = 'dashed')
+        plt.plot(re_list[2], pr_list[2], linewidth=3, color='darkslategray', linestyle = 'dotted')
+        # plt.fill_between(re_list[0], pr_list[0], alpha=0.3, color=pr_color[4])
+        # plt.fill_between(re_list[1], pr_list[1], alpha=0.3, color=pr_color[6])
+        # plt.fill_between(re_list[2], pr_list[2], alpha=0.3, color=pr_color[9])
         plt.xlim([0, 1])
-        plt.xticks(fontsize=20)
-        plt.yticks(fontsize=20)
-        plt.ylim([0, 1])
+        plt.xticks(fontsize=25)
+        plt.yticks(fontsize=25)
+        plt.ylim([0, 1])    
+        if Label == True:
+            plt.legend(['Male 19-39','Male 40-59','Male 60-79'],fontsize=25, loc="lower right")
 
 
-        fig.add_subplot(2,2,2)
-        plt.plot(fpr_list[3],tpr_list[3], linewidth=2, color=roc_color[4])
-        plt.plot(fpr_list[4],tpr_list[4], linewidth=2, color=roc_color[6])
-        plt.plot(fpr_list[5],tpr_list[5], linewidth=2, color=roc_color[9])
-        plt.fill_between(fpr_list[3],tpr_list[3], alpha=0.3, color=roc_color[4])
-        plt.fill_between(fpr_list[4],tpr_list[4], alpha=0.3, color=roc_color[6])
-        plt.fill_between(fpr_list[5],tpr_list[5], alpha=0.3, color=roc_color[9])
-        plt.legend(['Female 19-39','Female 39-59','Female 59-79'],
-                fontsize=20, loc="lower right")
+        fig.add_subplot(1,2,2)
+        plt.plot(re_list[3], pr_list[3], linewidth=3, color='darkgreen')
+        plt.plot(re_list[4], pr_list[4], linewidth=3, color=pr_color[6], linestyle = 'dashed')
+        plt.plot(re_list[5], pr_list[5], linewidth=3, color='darkslategray', linestyle = 'dotted')
+        # plt.fill_between(re_list[3], pr_list[3], alpha=0.3, color=pr_color[4])
+        # plt.fill_between(re_list[4], pr_list[4], alpha=0.3, color=pr_color[6])
+        # plt.fill_between(re_list[5], pr_list[5], alpha=0.3, color=pr_color[9])
+        if Label == True:
+            plt.legend(['Female 19-39','Female 40-59','Female 60-79'],fontsize=25, loc="lower right")
+            
+            
         plt.xlim([0, 1])
-        plt.xticks(fontsize=20)
-        plt.yticks(fontsize=20)
+        plt.xticks(fontsize=25)
+        plt.yticks(fontsize=25)
         plt.ylim([0, 1])
-
-
-        fig.add_subplot(2,2,3)
-        plt.plot(re_list[0], pr_list[0], linewidth=2, color=pr_color[4])
-        plt.plot(re_list[1], pr_list[1], linewidth=2, color=pr_color[6])
-        plt.plot(re_list[2], pr_list[2], linewidth=2, color=pr_color[9])
-        plt.fill_between(re_list[0], pr_list[0], alpha=0.3, color=pr_color[4])
-        plt.fill_between(re_list[1], pr_list[1], alpha=0.3, color=pr_color[6])
-        plt.fill_between(re_list[2], pr_list[2], alpha=0.3, color=pr_color[9])
-        plt.xlim([0, 1])
-        plt.xticks(fontsize=20)
-        plt.yticks(fontsize=20)
-        plt.ylim([0, 1])
-        plt.legend(['Male 19-39','Male 39-59','Male 59-79'],
-                fontsize=20, loc="lower right")
-
-
-        fig.add_subplot(2,2,4)
-        plt.plot(re_list[3], pr_list[3], linewidth=2, color=pr_color[4])
-        plt.plot(re_list[4], pr_list[4], linewidth=2, color=pr_color[6])
-        plt.plot(re_list[5], pr_list[5], linewidth=2, color=pr_color[9])
-        plt.fill_between(re_list[3], pr_list[3], alpha=0.3, color=pr_color[4])
-        plt.fill_between(re_list[4], pr_list[4], alpha=0.3, color=pr_color[6])
-        plt.fill_between(re_list[5], pr_list[5], alpha=0.3, color=pr_color[9])
-        plt.legend(['Female 19-39','Female 39-59','Female 59-79'],
-                fontsize=20, loc="lower right")
-        plt.xlim([0, 1])
-        plt.xticks(fontsize=20)
-        plt.yticks(fontsize=20)
-        plt.ylim([0, 1])
-
-        big_axes[0].text(0.43, 1.05, self.model + ' Roc Curve', fontsize=25)
-        big_axes[1].text(0.37, 1.05, self.model + ' Precision-Recall Curve', fontsize=25)
+        
+        fig.suptitle(self.model + ' Precision-Recall Curve', fontsize=25)
+        # big_axes[0].text(0.43, 1.05, self.model + ' Roc Curve', fontsize=25)
+        # big_axes[0].text(0.37, 1.05, self.model + ' Precision-Recall Curve', fontsize=25)
 
         plt.tight_layout()
         plt.savefig(self.PATH + "/Top " + str(self.top_count) + " " +
-                    self.model + '_ROC-PR Curve' + '.png')
+                    self.model + '_PR Curve' + '.png')
         plt.savefig(self.PATH2 +"/Top " + str(self.top_count) + " " +
-                    self.model + '_ROC-PR Curve' + '.pdf')
+                    self.model + '_PR Curve' + '.pdf')
