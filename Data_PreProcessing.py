@@ -34,17 +34,17 @@ class Preprocessor:
     
     def Load_data(self):
         # self.data = self.data
-        data1 = pd.read_csv("c:/Users/bm990/Desktop/백업/Python_Code/Obesity/2022-01-06/DATA/hn2016_all.csv",encoding='utf-8', low_memory=False)
-        data2 = pd.read_csv("c:/Users/bm990/Desktop/백업/Python_Code/Obesity/2022-01-06/DATA/hn2017_all.csv",encoding='utf-8', low_memory=False)
-        data3 = pd.read_csv("c:/Users/bm990/Desktop/백업/Python_Code/Obesity/2022-01-06/DATA/hn2018_all.csv",encoding='utf-8', low_memory=False)
-        data4 = pd.read_csv("c:/Users/bm990/Desktop/백업/Python_Code/Obesity/2022-01-06/DATA/hn2019_all.csv",encoding='utf-8', low_memory=False)
+        data1 = pd.read_csv("Data/hn2016_all.csv",encoding='utf-8', low_memory=False)
+        data2 = pd.read_csv("Data/hn2017_all.csv",encoding='utf-8', low_memory=False)
+        data3 = pd.read_csv("Data/hn2018_all.csv",encoding='utf-8', low_memory=False)
+        data4 = pd.read_csv("Data/hn2019_all.csv",encoding='utf-8', low_memory=False)
         
         self.data = pd.concat([data1, data2, data3, data4], ignore_index=True) # 18년 19년 자료 합쳐주는 부분.
         
         # Feature_Selection = pd.read_csv('RFC_Feature_Selection/RFC_feature_selection_Binary_OVERSAMPLING_No_gender_No_age_ADASYN.csv', index_col = 0)
-        # Feature_Selection = pd.read_csv('c:/Users/bm990/Desktop/백업/Python_Code/Obesity/2022-01-06/RFC_Feature_Selection/RFC_feature_selection_Binary_OverSampling.csv', index_col = 0)
-        Feature_Selection = pd.read_csv('c:/Users/bm990/Desktop/백업/Python_Code/Obesity/2022-01-06/0310_RFC_Feature_Selection/RFC_feature_selection_Binary_OverSampling_SMOTE.csv', index_col = 0)
-        # Feature_Selection = pd.read_csv('c:/Users/bm990/Desktop/백업/Python_Code/Obesity/2022-01-06/0310_RFC_Feature_Selection/RFC_feature_selection_Binary_OverSampling_ADASYN.csv', index_col = 0)
+        # Feature_Selection = pd.read_csv('RFC_Feature_Selection/RFC_feature_selection_Binary_OverSampling.csv', index_col = 0)
+        Feature_Selection = pd.read_csv('Data/RFC_feature_selection_Binary_OverSampling_SMOTE.csv', index_col = 0)
+        # Feature_Selection = pd.read_csv('0310_RFC_Feature_Selection/RFC_feature_selection_Binary_OverSampling_ADASYN.csv', index_col = 0)
         filtering = Feature_Selection[(Feature_Selection['gender'] == self.ii) & (Feature_Selection['age'] == str(self.age))]
         column_feature = ['HE_BMI'] + list(filtering.index[0:self.top_count])
         self.column_feature = column_feature
@@ -444,7 +444,7 @@ class Classifier(Preprocessor):
         self.a_cnt1 = cnt[3]
         
         self.sup = "_" + str(self.Method)
-        self.PATH = "2022-01-06/" + day + "/Binary_" + str(self.model) + "_Result" + self.sup
+        self.PATH = day + "/Binary_" + str(self.model) + "_Result" + self.sup
         self.PATH2 = self.PATH + "/eps"
         import os
         os.makedirs(day,exist_ok=True)
