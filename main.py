@@ -4,8 +4,8 @@ import time
 import datetime
 
 OS_Method = 'None'
-CF_Method = 'SVC'#[LGBM, RFC, 'LGBM',RFC,GBM '', MLP]#,"KNN",LR ''] ', 
-day = '0331_Notoversampling_SMOTE_RESULT_'
+CF_Method = 'LGBM'#[SVC, LGBM, RFC, 'LGBM',RFC,GBM '', MLP]#,"KNN",LR ''] ', 
+day = 'Model_serving_test'
 start = time.time()                       
 pl_acc = []
 ct = 0
@@ -68,8 +68,7 @@ for top_count in [8]:
     label = [True, False]
     Classifier_.ROCPR_save_sub(fpr_list, tpr_list, re_list, pr_list, label[0])
     
-    pl.to_csv('c:/Users/bm990/Desktop/백업/Python_Code/Obesity/2022-01-06/' +
-        day + '/Binary_' + CF_Method + '_Result_' + OS_Method +
+    pl.to_csv(day + '/Binary_' + CF_Method + '_Result_' + OS_Method +
         '/top ' + str(top_count) +
         ' ' + CF_Method + '_혈액검사 데이터_' + OS_Method + '.csv',
         index=False)
